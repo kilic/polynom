@@ -1,5 +1,5 @@
-from polynom.scalar import Scalar, zero, one
-from polynom.ecc.curve import Point
+from polynom.ecc  import Scalar, zero, one
+from polynom.ecc import Point
 from polynom.polynomial import Polynomial
 
 ZERO_POINT = Point.ZERO()

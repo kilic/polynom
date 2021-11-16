@@ -1,4 +1,4 @@
-from polynom.scalar import Scalar, one
+from polynom.ecc import Scalar, one
 from polynom.polynomial import Polynomial
 from polynom.domain.domain import Domain
 from polynom.ecc.bn254.domain import domain_config, kx

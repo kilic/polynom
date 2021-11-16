@@ -1,5 +1,5 @@
 from __future__ import annotations
-from polynom.scalar import Scalar, zero, one
+from polynom.ecc import Scalar, zero, one
 from polynom.utils import trim_zeros, pad
 
 # k = Scalar(7)

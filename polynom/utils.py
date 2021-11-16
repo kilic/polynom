@@ -1,4 +1,4 @@
-from polynom.scalar import Scalar, zero
+from polynom.ecc import Scalar, zero
 
 
 def log2(n: int) -> int:

@@ -1,5 +1,5 @@
 from polynom.polynomial import evaluate, Polynomial
-from polynom.scalar import Scalar
+from polynom.ecc import Scalar
 
 
 def test_cmp():

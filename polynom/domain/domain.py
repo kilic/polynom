@@ -1,6 +1,6 @@
 from polynom.domain.fft import perform_fft
 from typing import Union
-from polynom.scalar import Scalar, one, zero
+from polynom.ecc import Scalar, one, zero
 from polynom.utils import log2, pad
 from polynom.polynomial import Polynomial
 

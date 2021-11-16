@@ -1,4 +1,4 @@
-from polynom.scalar import Scalar
+from polynom.ecc import Scalar
 from polynom.utils import bit_reverse, log2
 
 
