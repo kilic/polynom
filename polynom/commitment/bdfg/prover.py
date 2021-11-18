@@ -171,3 +171,42 @@ class BDFGProver(KZGProverBase):
 
         # return proof
         return transcript.get_message()
+
+    def create_proof_batch_mal(self, batch: BatchBDFGProverKey) -> bytes:
+
+        transcript = self.new_transcript()
+
+        # commit to polynomials f_i(X) and write commitments to the transcript
+
+        [transcript.write_point(c) for c in self.c(*batch.polynomials())]
+        # get evaluation point
+        z = transcript.challenge()
+
+        # evaluate polynomials in multiple points
+        # [f_0(u_0), f_0(u_1), ...]
+        # [f_1(v_0), f_1(v_1), ...]
+        evals = batch.evaluate(z)
+
+        # break in with some bad evals
+        # assuming 0th linearisation contribution is zeroized
+        for i in range(len(evals[0])):
+            evals[0][i] = Scalar(1999)
+
+        # write evaluations to the transcript
+        [[transcript.write_scalar(eval) for eval in evals_i] for evals_i in evals]
+
+        # get combination base
+        alpha = LinearCombination(transcript.challenge())
+
+        # calculate first quotient h(X)
+        h_x = batch.quotient_polynomial(alpha, z)
+        # commit to the first quotient and write it to the transcript
+        transcript.write_point(self.commit(h_x))
+
+        # calculate second quotient
+        h2_x = batch.linearized_quotient_polynomial(alpha, z)
+        # commit to the scond quotient and write it to the transcript
+        transcript.write_point(self.commit(h2_x))
+
+        # return proof
+        return transcript.get_message()
