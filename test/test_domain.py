@@ -1,5 +1,5 @@
 from polynom.ecc import Scalar, one
-from polynom.polynomial import Polynomial
+from polynom.polynomial import Polynomial, evaluate, lagrange_interpolation
 from polynom.domain.domain import Domain
 from polynom.ecc.bn254.domain import domain_config, kx
 
@@ -103,6 +103,18 @@ def test_domain():
     vi1 = [domain.interpolate(u) for u in v]
     for v0, v1 in zip(vi0, vi1):
         assert v0 == v1
+
+    v_0_x = Polynomial.rand(1 << n)
+    ys = domain.evaluate(v_0_x)
+    xs = domain.domain
+
+    points = []
+    for x, y in zip(xs, ys):
+        points.append((x, y))
+
+    v_1_x = lagrange_interpolation(points)
+
+    assert v_0_x == v_1_x
 
 
 def test_lagrage_polynomial():

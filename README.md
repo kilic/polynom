@@ -1,21 +1,21 @@
-Experiments with polynomials and polynomial commitments.
+Experiments with polynomials and polynomial commitments
+
+Includes various KZG based multi opening systems
+
+* Original KZG
+* Section 3 of [PLONK](https://eprint.iacr.org/2019/953.pdf)
+* [Efficient polynomial commitment schemes for multiple points and polynomials](https://eprint.iacr.org/2020/081.pdf)
 
 ```python
-def test():
+def test_kzg_batch():
 
     n = 3
-    domain = Domain(domain_config(n))
-    prover, verifier = kzg_setup(1 << n, domain)
+    KZG = kzg_setup(n)
 
-    p_x = Polynomial.rand(1 << n)
+    prover = KZG.prover_kzg()
+    polys = [Polynomial.rand(1 << n) for _ in range(4)]
+    proof = prover.create_proof_batch(polys)
 
-    assert domain.evaluate(domain.interpolate(p_x)) == p_x
-    assert domain.interpolate(domain.evaluate(p_x)) == p_x
-
-    z = Scalar.rand()
-    C = prover.commit(p_x)
-    e = p_x(z)
-    W = prover.witness(z, p_x)
-    proof = KZGProof(z, W, C, e)
-    assert verifier.verify(proof)
+    verifier = KZG.verifier_kzg()
+    assert verifier.verify_batch(len(polys), proof)
 ```

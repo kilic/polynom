@@ -1,4 +1,4 @@
-from polynom.polynomial import evaluate, Polynomial
+from polynom.polynomial import evaluate, Polynomial, lagrange_interpolation
 from polynom.ecc import Scalar
 
 
@@ -48,3 +48,16 @@ def test_eval():
     vi1 = [u(e) for u in v]
     for v0, v1 in zip(vi0, vi1):
         assert v0 == v1
+
+
+def test_lagrange_interpolation():
+
+    n = 10
+    points = []
+    for i in range(n):
+        points.append((Scalar.rand(), Scalar.rand()))
+
+    L_x = lagrange_interpolation(points)
+
+    for i in range(n):
+        assert (L_x(points[i][0]) == points[i][1])

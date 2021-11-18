@@ -112,7 +112,7 @@ class Point():
         return self.new(point)
 
     def __sub__(self, other: Point) -> Point:
-        neg_other = self.neg(other)
+        neg_other = -other
         point = self.curve.add(self.point, neg_other.point)
         return self.new(point)
 

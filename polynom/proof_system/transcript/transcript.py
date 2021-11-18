@@ -4,7 +4,7 @@ from polynom.proof_system.transcript.hasher import Hasher
 
 class Transcript():
 
-    def __init__(self, hasher):
+    def __init__(self, hasher: Hasher):
         self.hasher = hasher
 
     def challenge(self,) -> Scalar:
@@ -24,11 +24,6 @@ class TranscriptRead(Transcript):
         super().__init__(hasher)
         self.message = message
         self.offset = 0
-
-    def read_4_bytes(self) -> int:
-        ret = int.from_bytes(self.message[self.offset:self.offset + 4], "little")
-        self.offset += 4
-        return ret
 
     def read_point(self) -> Point:
         point_size = CURVE.uncompressed_point_size()
@@ -53,9 +48,6 @@ class TranscriptWrite(Transcript):
         hasher.clean_state()
         super().__init__(hasher)
         self.message = bytes()
-
-    def write_4_bytes(self, n: int):
-        self.message += n.to_bytes(4, "little")
 
     def write_point(self, point: Point):
         self.message += self.write_point_to_state(point)

@@ -53,13 +53,12 @@ class SHA256(Hasher):
     def challenge(self) -> Scalar:
         # FIX: this is not secure way to squeeze challenge
         # We must derive a scalar from larger input
-        # self.hasher.update(self.challenge_prefix + (0).to_bytes(1, 'little'))
-        # u_0 = self.hasher.digest()
-        # return Scalar.from_32(u_0)
-        # # self.hasher.update(self.challenge_prefix + (1).to_bytes(1, 'little'))
-        # # u_1 = self.hasher.digest()
-        # # return Scalar.from_64(u_0 + u_1)
-        return Scalar(5)
+        self.hasher.update(self.challenge_prefix + (0).to_bytes(1, 'little'))
+        u_0 = self.hasher.digest()
+        return Scalar.from_32(u_0)
+        # self.hasher.update(self.challenge_prefix + (1).to_bytes(1, 'little'))
+        # u_1 = self.hasher.digest()
+        # return Scalar.from_64(u_0 + u_1)
 
     def clean_state(self):
         self.hasher = SHA256.new_state(self.person)

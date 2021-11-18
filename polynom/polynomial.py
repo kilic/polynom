@@ -1,12 +1,32 @@
 from __future__ import annotations
+from typing import Tuple
 from polynom.ecc import Scalar, zero, one
 from polynom.utils import trim_zeros, pad
-
-# k = Scalar(7)
 
 
 def evaluate(point: Scalar, *inputs: Polynomial) -> list[Scalar]:
     return [input(point) for input in inputs]
+
+
+def lagrange_interpolation(xy: list[Tuple(Scalar, Scalar)]) -> Polynomial:
+
+    L_x = Polynomial.zero()
+    size = len(xy)
+    for i in range(size):
+        l_x = Polynomial.one()
+        denom = Scalar(1)
+        x_i, y_i = xy[i]
+        for j in range(size):
+            x_j, _ = xy[j]
+            if j == i:
+                continue
+            contrib = Polynomial.degree_one(x_j)
+            l_x = l_x * contrib
+            denom = denom * (x_i - x_j)
+        l_x = l_x * (y_i / denom)
+        L_x = L_x + l_x
+
+    return L_x
 
 
 class Polynomial:
@@ -17,9 +37,18 @@ class Polynomial:
         return Polynomial([Scalar(e) for e in v])
 
     @staticmethod
+    def degree_one(z: Scalar):
+        return Polynomial([-z, Scalar(1)])
+
+    @staticmethod
     def zero():
 
         return Polynomial([])
+
+    @staticmethod
+    def one():
+
+        return Polynomial([Scalar(1)])
 
     @staticmethod
     def rand(n: int):
