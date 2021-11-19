@@ -145,26 +145,3 @@ def test_bdfg_batch():
     key_multi_0, key_multi_1 = verifier.new_multi_key(shifts_0), verifier.new_multi_key(shifts_1)
     key = verifier.new_batch_key([key_multi_0, key_multi_1])
     assert verifier.verifiy_batch(proof, key)
-
-
-def test_bdfg_batch_mal():
-
-    n = 6
-    KZG = kzg_setup(n)
-    prover, verifier = KZG.prover_bdfg(), KZG.verifier_bdfg()
-
-    p_0_x = Polynomial.rand(1 << n)
-    shifts_0 = [1, 2]
-    key_multi_0 = prover.new_multi_key(p_0_x, shifts_0)
-
-    p_1_x = Polynomial.rand(1 << n)
-
-    shifts_1 = [0, 3]  # this one makes malicious case work!
-
-    key_multi_1 = prover.new_multi_key(p_1_x, shifts_1)
-    batch = prover.new_batch_key([key_multi_0, key_multi_1])
-    proof = prover.create_proof_batch_mal(batch)
-
-    key_multi_0, key_multi_1 = verifier.new_multi_key(shifts_0), verifier.new_multi_key(shifts_1)
-    key = verifier.new_batch_key([key_multi_0, key_multi_1])
-    assert verifier.verifiy_batch(proof, key)

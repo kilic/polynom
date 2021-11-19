@@ -45,20 +45,26 @@ class BDFGVerifier(KZGVerifierBase):
 
         # read the comitment
         F = transcript.read_point()
-        # get evaluation point
+        # get evaluation seed
         z = transcript.challenge()
 
         # read evaluations
         evals = [transcript.read_scalar() for _ in range(key.opening_size())]
 
-        # read witness points
-        W, W_2 = transcript.read_point(), transcript.read_point()
+        # read first witness points
+        W = transcript.read_point()
+
+        # get linearisation point
+        x = transcript.challenge()
+
+        # read second witness points
+        W_2 = transcript.read_point()
 
         # construct r(X) that is low degree equivalent of `f(X)`
         # where `f(set(z)) = r(set(z))`
         # then make a soft commitment to it `R = r(z) * G`
         r_x = key.low_degree_equivalent(evals, z)
-        R = self.G * r_x(z)
+        R = self.G * r_x(x)
 
         # pairing check:
 
@@ -67,13 +73,13 @@ class BDFGVerifier(KZGVerifierBase):
         # first we reconstruct linearisation point `L`
         # `L = com(f(x)) - R - com(h(x)) * Z(x)``
         z_x = key.vanising(z)
-        L = F - R - (W * z_x(z))
+        L = F - R - (W * z_x(x))
 
         # calcualate the escape from G2 term `z_x(z) * W'
-        z_W_2 = W_2 * z
+        x_W_2 = W_2 * x
 
         # finally apply the pairing
-        pairs = [(self.X_2, W_2), (self.n_G_2, z_W_2 + L)]
+        pairs = [(self.X_2, W_2), (self.n_G_2, x_W_2 + L)]
 
         return pairing_check(pairs)
 
@@ -83,7 +89,7 @@ class BDFGVerifier(KZGVerifierBase):
 
         # read comitments
         commitments = [transcript.read_point() for _ in range(key.opening_size())]
-        # get evaluation point
+        # get evaluation seed
         z = transcript.challenge()
 
         # read evaluations
@@ -92,8 +98,14 @@ class BDFGVerifier(KZGVerifierBase):
         # get combination base
         alpha = LinearCombination(transcript.challenge())
 
-        # read witness points
-        W, W_2 = transcript.read_point(), transcript.read_point()
+        # read first witness point
+        W = transcript.read_point()
+
+        # get linearisation point
+        x = transcript.challenge()
+
+        # read second witness point
+        W_2 = transcript.read_point()
 
         # construct r_i(X) that is low degree equivalent of `f_i(X)`
         # where `f_i(set(z)) = r_i(set(z))`
@@ -115,18 +127,18 @@ class BDFGVerifier(KZGVerifierBase):
         z_i_x = [key.inverse_vanishing(i, z) for i in range(key.opening_size())]
 
         # `Z'_i(z) * (com(f_i(x)) - R_i)`
-        linearisation_contibs = [(commitments[i] - self.G * r_i_x[i](z)) * z_i_x[i](z) for i in range(key.opening_size())]
+        linearisation_contibs = [(commitments[i] - self.G * r_i_x[i](x)) * z_i_x[i](x) for i in range(key.opening_size())]
         # combine linearisation
         L = alpha.combine_points(*linearisation_contibs)
 
         # `L = ∑ - com(h(x)) * Z(z)`
         z_x = key.vanishing(z)
-        L = L - (W * z_x(z))
+        L = L - (W * z_x(x))
 
         # calcualate the escape from G2 term `z_x(z) * W'
-        z_W_2 = W_2 * z
+        x_W_2 = W_2 * x
 
         # finally apply the pairing
-        pairs = [(self.X_2, W_2), (self.n_G_2, z_W_2 + L)]
+        pairs = [(self.X_2, W_2), (self.n_G_2, x_W_2 + L)]
 
         return pairing_check(pairs)

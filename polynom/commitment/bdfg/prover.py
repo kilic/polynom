@@ -26,16 +26,16 @@ class MultiBDFGProverKey(MultiBDFGCommon):
         points = [(x, y) for x, y in zip(eval_points, evals)]
         return lagrange_interpolation(points)
 
-    def linearision_polynomial(self, z: Scalar) -> Polynomial:
+    def linearision_polynomial(self, z: Scalar, x: Scalar) -> Polynomial:
 
         z_x = self.vanising(z)
-        z_eval = z_x(z)
+        z_eval = z_x(x)
         r_x = self.low_degree_equivalent(z)
-        r_eval = r_x(z)
+        r_eval = r_x(x)
         h_x = self.quotient_polynomial(z)
         l_x = self.poly - r_eval - h_x * z_eval
         # sanity check
-        assert l_x(z) == zero
+        assert l_x(x) == zero
         return l_x
 
     def quotient_polynomial(self, z: Scalar) -> Polynomial:
@@ -47,10 +47,10 @@ class MultiBDFGProverKey(MultiBDFGCommon):
         assert q_x.degree() == self.poly.degree() - z_x.degree()
         return q_x
 
-    def linearized_quotient_polynomial(self, z) -> Polynomial:
+    def linearized_quotient_polynomial(self, z: Scalar, x: Scalar) -> Polynomial:
 
-        l_x = self.linearision_polynomial(z)
-        u_x = self.domain.div(l_x, Polynomial.degree_one(z))
+        l_x = self.linearision_polynomial(z, x)
+        u_x = self.domain.div(l_x, Polynomial.degree_one(x))
         # sanity check
         assert u_x.degree() + 1 == l_x.degree()
         return u_x
@@ -75,7 +75,6 @@ class BatchBDFGProverKey(BatchBDFGCommon):
 
     def inverse_vanishing(self, multi_open_index: int, z: Scalar) -> Polynomial:
 
-        acc = Polynomial.one()
         # TODO: double check the order
         inv_eval_points = self.eval_points(z) ^ set(self.openings[multi_open_index].eval_points(z))
         return vanising_at(inv_eval_points)
@@ -84,29 +83,31 @@ class BatchBDFGProverKey(BatchBDFGCommon):
     # def combine_linearisation_contribs(self, multi_open_index: int, z: Scalar) -> Polynomial:
     #     # [((self.openings[i].poly - self.openings[i].low_degree_equivalent(z)) * self.inverse_vanishing(i, z)) for i in range(len(self.openings))]
 
-    def linearisation_contrib(self, multi_open_index: int, z: Scalar) -> Polynomial:
-
-        z_i_not_x = self.inverse_vanishing(multi_open_index, z)
-        f_x = self.openings[multi_open_index].poly
-        r_x = self.openings[multi_open_index].low_degree_equivalent(z)
-        return (f_x - r_x(z)) * z_i_not_x(z)
-
     def quotient_polynomial(self, alpha: LinearCombination, z: Scalar):
 
         quotient_contribs = [opening.quotient_polynomial(z) for opening in self.openings]
         return alpha.combine_poly(*quotient_contribs)
 
-    def linearized_quotient_polynomial(self, alpha: LinearCombination, z: Scalar):
+    def linearisation_contrib(self, multi_open_index: int, z: Scalar, x: Scalar) -> Polynomial:
 
-        linearisation_contribs = [self.linearisation_contrib(i, z) for i in range(len(self.openings))]
+        z_i_not_x = self.inverse_vanishing(multi_open_index, z)
+        f_x = self.openings[multi_open_index].poly
+        r_x = self.openings[multi_open_index].low_degree_equivalent(z)
+        r_eval = r_x(x)
+        z_i_not_eval = z_i_not_x(x)
+        return (f_x - r_eval) * z_i_not_eval
+
+    def linearized_quotient_polynomial(self, alpha: LinearCombination, z: Scalar, x: Scalar):
+
+        linearisation_contribs = [self.linearisation_contrib(i, z, x) for i in range(len(self.openings))]
         q_x = self.quotient_polynomial(alpha, z)
         z_x = self.vanishing(z)
-        z_eval = z_x(z)
+        z_eval = z_x(x)
         l_x = alpha.combine_poly(*linearisation_contribs) - q_x * z_eval
         # sanity check
-        assert l_x(z) == zero
+        assert l_x(x) == zero
 
-        return self.domain.div(l_x, Polynomial.degree_one(z))
+        return self.domain.div(l_x, Polynomial.degree_one(x))
 
 
 class BDFGProver(KZGProverBase):
@@ -124,7 +125,7 @@ class BDFGProver(KZGProverBase):
         # commit to the polynomial f(X) and write it to the trasctipy
         transcript.write_point(self.commit(multi_point.poly))
 
-        # get evaluation point
+        # get evaluation seed
         z = transcript.challenge()
 
         # evaluate polynomial at shifted values of z
@@ -136,8 +137,12 @@ class BDFGProver(KZGProverBase):
         # commit to the quotient W = com(h(X))
         # write it to the transcript
         transcript.write_point(self.commit(multi_point.quotient_polynomial(z)))
-        # same goes for second quotient h'(Xf)
-        transcript.write_point(self.commit(multi_point.linearized_quotient_polynomial(z)))
+
+        # get linearisation point
+        x = transcript.challenge()
+
+        # same goes for second quotient h'(X)
+        transcript.write_point(self.commit(multi_point.linearized_quotient_polynomial(z, x)))
         return transcript.get_message()
 
     def create_proof_batch(self, batch: BatchBDFGProverKey) -> bytes:
@@ -146,7 +151,8 @@ class BDFGProver(KZGProverBase):
 
         # commit to polynomials f_i(X) and write commitments to the transcript
         [transcript.write_point(c) for c in self.c(*batch.polynomials())]
-        # get evaluation point
+
+        # get evaluation seed
         z = transcript.challenge()
 
         # evaluate polynomials in multiple points
@@ -164,47 +170,11 @@ class BDFGProver(KZGProverBase):
         # commit to the first quotient and write it to the transcript
         transcript.write_point(self.commit(h_x))
 
-        # calculate second quotient
-        h2_x = batch.linearized_quotient_polynomial(alpha, z)
-        # commit to the scond quotient and write it to the transcript
-        transcript.write_point(self.commit(h2_x))
-
-        # return proof
-        return transcript.get_message()
-
-    def create_proof_batch_mal(self, batch: BatchBDFGProverKey) -> bytes:
-
-        transcript = self.new_transcript()
-
-        # commit to polynomials f_i(X) and write commitments to the transcript
-
-        [transcript.write_point(c) for c in self.c(*batch.polynomials())]
-        # get evaluation point
-        z = transcript.challenge()
-
-        # evaluate polynomials in multiple points
-        # [f_0(u_0), f_0(u_1), ...]
-        # [f_1(v_0), f_1(v_1), ...]
-        evals = batch.evaluate(z)
-
-        # break in with some bad evals
-        # assuming 0th linearisation contribution is zeroized
-        for i in range(len(evals[0])):
-            evals[0][i] = Scalar(1999)
-
-        # write evaluations to the transcript
-        [[transcript.write_scalar(eval) for eval in evals_i] for evals_i in evals]
-
-        # get combination base
-        alpha = LinearCombination(transcript.challenge())
-
-        # calculate first quotient h(X)
-        h_x = batch.quotient_polynomial(alpha, z)
-        # commit to the first quotient and write it to the transcript
-        transcript.write_point(self.commit(h_x))
+        # get linearisation point
+        x = transcript.challenge()
 
         # calculate second quotient
-        h2_x = batch.linearized_quotient_polynomial(alpha, z)
+        h2_x = batch.linearized_quotient_polynomial(alpha, z, x)
         # commit to the scond quotient and write it to the transcript
         transcript.write_point(self.commit(h2_x))
 
