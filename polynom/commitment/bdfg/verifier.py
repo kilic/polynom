@@ -1,7 +1,7 @@
-from __future__ import annotations, barry_as_FLUFL
+from __future__ import annotations
 from polynom.commitment.kzg_base import KZGVerifierBase
 from polynom.commitment.bdfg.common import BatchBDFGCommon, MultiBDFGCommon, vanising_at
-from polynom.ecc import Scalar, pairing_check
+from polynom.ecc import Point, Scalar, pairing_check
 from polynom.lc import LinearCombination
 from polynom.polynomial import Polynomial, lagrange_interpolation
 
@@ -68,14 +68,14 @@ class BDFGVerifier(KZGVerifierBase):
 
         # pairing check:
 
-        # `e(W', X) == e(z_x(z) * W' + L, G)``
+        # `e(W', X) == e(Z(z) * W' + L, G)``
 
         # first we reconstruct linearisation point `L`
-        # `L = com(f(x)) - R - com(h(x)) * Z(x)``
+        # `L = com(f(x)) - R - com(h(X)) * Z(x)``
         z_x = key.vanising(z)
         L = F - R - (W * z_x(x))
 
-        # calcualate the escape from G2 term `z_x(z) * W'
+        # calcualate the escape from G2 term `x * W'
         x_W_2 = W_2 * x
 
         # finally apply the pairing
@@ -109,33 +109,30 @@ class BDFGVerifier(KZGVerifierBase):
 
         # construct r_i(X) that is low degree equivalent of `f_i(X)`
         # where `f_i(set(z)) = r_i(set(z))`
-        # then make a soft commitment to them `R_i = r_i(z) * G`
-
         r_i_x = [opening.low_degree_equivalent(evals, z) for opening, evals in zip(key.openings, evals)]
-        # R_i = [self.G * r_x(z) for r_x in r_i_x]
 
         # pairing check:
-        # `e(W', X) == e(z_x(z) * W' + L, G)``
+        # `e(W', X) == e(Z_T(x) * W' + L, G)``
 
         # first we reconstruct linearisation point `L`
         # ```
-        # L = ∑ Z'_i(z) * (com(f_i(x)) - R_i)
-        #   - com(h(x)) * Z(z)
+        # L = ∑ Z'_i(x) * (com(f_i(X)) - r_i(x) * G)
+        #   - com(h(X)) * Z(X)
         # ````
 
         # calculate `Z'_i(X) = Z _T(X) / Z_i(X)`
         z_i_x = [key.inverse_vanishing(i, z) for i in range(key.opening_size())]
 
-        # `Z'_i(z) * (com(f_i(x)) - R_i)`
+        # `Z'_i(x) * (com(f_i(X)) - r_i(x) * G)`
         linearisation_contibs = [(commitments[i] - self.G * r_i_x[i](x)) * z_i_x[i](x) for i in range(key.opening_size())]
         # combine linearisation
         L = alpha.combine_points(*linearisation_contibs)
 
-        # `L = ∑ - com(h(x)) * Z(z)`
+        # `L = ∑ - com(h(X)) * Z(x)`
         z_x = key.vanishing(z)
         L = L - (W * z_x(x))
 
-        # calcualate the escape from G2 term `z_x(z) * W'
+        # calcualate the escape from G2 term `Z_T(x) * W'
         x_W_2 = W_2 * x
 
         # finally apply the pairing

@@ -1,4 +1,4 @@
-from __future__ import annotations, barry_as_FLUFL
+from __future__ import annotations
 from polynom.commitment.kzg_base import KZGProverBase
 from polynom.commitment.bdfg.common import BatchBDFGCommon, MultiBDFGCommon, vanising_at
 from polynom.ecc import Scalar, zero

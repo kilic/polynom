@@ -67,6 +67,7 @@ def test_bdfg_precomputation():
     shifts_0 = [0, 1, 2, 3, 10, 11]
     multi_0 = MultiBDFGProverKey(domain, p_0_x, shifts_0)
     z = Scalar.rand()
+    x = Scalar.rand()
 
     r_x = multi_0.low_degree_equivalent(z)
     for z in multi_0.eval_points(z):
@@ -81,7 +82,7 @@ def test_bdfg_precomputation():
     q_x = multi_0.quotient_polynomial(z)
     assert q_x.degree() == p_0_x.degree() - len(shifts_0)
 
-    l_x = multi_0.linearized_quotient_polynomial(z)
+    l_x = multi_0.linearized_quotient_polynomial(z, x)
     assert l_x.degree() == p_0_x.degree() - 1
 
     p_1_x = Polynomial.rand(1 << n)
