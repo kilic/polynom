@@ -1,7 +1,18 @@
 from polynom.ecc import Scalar, one
 from polynom.polynomial import Polynomial, lagrange_interpolation
-from polynom.ecc.bn254.domain import new_domain, kx
+from polynom.ecc.bn254.domain import new_domain
 
+
+def test_coset():
+
+    domain = new_domain(3)
+    a = Polynomial([Scalar(i) for i in range(8)])
+
+    a_k = domain.distribute_zeta(a)
+    a_k.debug_verbose("a_kx")
+
+    a_x = domain.evaluate(a_k)
+    a_x.debug_verbose("a_x")
 
 
 def test_interpolation():
@@ -24,7 +35,7 @@ def test_omega():
 
         A = Polynomial.rand(domain.n)
         A_x = domain.interpolate(A)
-        A_wx = domain.omega(A_x)
+        A_wx = domain.distribute_omega(A_x)
         Aw = domain.evaluate(A_wx)
         for i in range(A.n()):
             assert A[i] == Aw[i - 1]
@@ -71,7 +82,7 @@ def test_domain():
     c = a.mul_sample(b)
 
     z_x = small_domain.vanishing()
-    z_x_dist = z_x.distribute(kx)
+    z_x_dist = small_domain.distribute_zeta(z_x)
     zi = large_domain.evaluate(z_x_dist).inv_sample()
 
     a_x = small_domain.interpolate(a)
@@ -83,16 +94,16 @@ def test_domain():
     a_x = small_domain.interpolate(a)
     b_x = small_domain.interpolate(b)
     c_x = small_domain.interpolate(c)
-    a_x = a_x.distribute(kx)
-    b_x = b_x.distribute(kx)
-    c_x = c_x.distribute(kx)
+    a_x = small_domain.distribute_zeta(a_x)
+    b_x = small_domain.distribute_zeta(b_x)
+    c_x = small_domain.distribute_zeta(c_x)
     a = large_domain.evaluate(a_x)
     b = large_domain.evaluate(b_x)
     c = large_domain.evaluate(c_x)
     t1 = a.mul_sample(b) - c
     t1 = t1.mul_sample(zi)
     t1_x = large_domain.interpolate(t1)
-    t1_x = t1_x.distribute(one / kx)
+    t1_x = large_domain.distribute_zeta_inv(t1_x)
 
     assert t1_x == t0_x
     assert t1_x.degree() == a_x.degree() + b_x.degree() - z_x.degree()

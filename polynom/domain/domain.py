@@ -5,19 +5,6 @@ from polynom.utils import log2, pad_scalars, batch_inverse, pad_points
 from polynom.polynomial import Polynomial
 
 
-class DomainConfig:
-
-    def __init__(self, root_of_unity: Scalar, s: int, exp: int, k2: Scalar, k: int = 1):
-        self.root_of_unity = root_of_unity
-        self.k = k
-        self.s = s
-        self.exp = exp
-        self.k2 = k2
-        self.inv_k2 = one / k2
-        self.n = 1 << exp
-        self.inv_n = one / self.n
-
-
 def calculate_domain(w: Scalar, exp: int, k: int = 1) -> list[Scalar]:
     n = 1 << exp
     W = [Scalar(k)] + (n - 1) * [Scalar(0)]
@@ -28,25 +15,27 @@ def calculate_domain(w: Scalar, exp: int, k: int = 1) -> list[Scalar]:
 
 class Domain:
 
-    def __init__(self, config: DomainConfig):
+    def __init__(self, root_of_unity: Scalar, s: int, exp: int, k: Scalar):
 
-        w = config.root_of_unity
+        w = root_of_unity
         w_inv = w.inverse()
 
-        self.exp = config.exp
-        self.s = config.s
-        self.k = config.k
-        self.k2 = config.k2
-        self.inv_k2 = config.inv_k2
-        self.n = config.n
-        self.inv_n = config.inv_n
+        self.exp = exp
+        self.s = s
+        self.inv_k = one / k
+        self.k = k
+        self.n = 1 << exp
+        self.inv_n = one / self.n
 
         for _ in range(self.exp, self.s):
             w, w_inv = w**2, w_inv**2
 
-        self.domain = calculate_domain(w, self.exp, self.k)
-        self.inverse_domain = calculate_domain(w_inv, self.exp, self.k)
-        assert (batch_inverse(self.domain) == self.inverse_domain)
+        self.domain = calculate_domain(w, self.exp, one)
+        self.inverse_domain = calculate_domain(w_inv, self.exp, one)
+
+        assert self.domain[1] == w
+        assert self.inverse_domain[1] == w_inv
+        assert batch_inverse(self.domain) == self.inverse_domain
 
     def extend(self, poly: Polynomial):
         assert poly.n() <= self.n
@@ -119,8 +108,14 @@ class Domain:
     def w_inv(self) -> Scalar:
         return self.inverse_domain[1]
 
-    def omega(self, poly: Polynomial) -> Polynomial:
+    def distribute_omega(self, poly: Polynomial) -> Polynomial:
         return poly.distribute(self.w())
+
+    def distribute_zeta(self, poly: Polynomial) -> Polynomial:
+        return poly.distribute(self.k)
+
+    def distribute_zeta_inv(self, poly: Polynomial) -> Polynomial:
+        return poly.distribute(self.inv_k)
 
     def vanishing(self) -> Polynomial:
         return Polynomial([-one] + [zero] * (self.n - 1) + [one])
@@ -159,10 +154,8 @@ class Domain:
         return self.new_poly(coeffs)
 
     def coset_div(self, a: Polynomial, b: Polynomial) -> Polynomial:
-        k2 = self.k2
-        inv_k2 = self.inv_k2
 
         if a.is_zero():
             return a.clone()
-        u = self.div(a.distribute(k2), b.distribute(k2))
-        return u.distribute(inv_k2)
+        u = self.div(self.distribute_zeta(a), self.distribute_zeta(b))
+        return self.distribute_zeta_inv(u)

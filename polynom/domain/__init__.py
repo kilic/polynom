@@ -1,1 +1,1 @@
-from .domain import DomainConfig, Domain
+from .domain import Domain
