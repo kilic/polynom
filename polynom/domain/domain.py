@@ -1,7 +1,7 @@
 from polynom.domain.fft import perform_fft
 from typing import Union
-from polynom.ecc import Scalar, one, zero
-from polynom.utils import log2, pad
+from polynom.ecc import Point, Scalar, one, zero
+from polynom.utils import log2, pad_scalars, batch_inverse, pad_points
 from polynom.polynomial import Polynomial
 
 
@@ -26,18 +26,13 @@ def calculate_domain(w: Scalar, exp: int, k: int = 1) -> list[Scalar]:
     return W
 
 
-def inverse_domain(domain: list[Scalar]) -> list[Scalar]:
-    inverse_domain = []
-    for w in domain:
-        inverse_domain.append(one / w)
-    return inverse_domain
-
-
 class Domain:
 
     def __init__(self, config: DomainConfig):
 
         w = config.root_of_unity
+        w_inv = w.inverse()
+
         self.exp = config.exp
         self.s = config.s
         self.k = config.k
@@ -47,11 +42,11 @@ class Domain:
         self.inv_n = config.inv_n
 
         for _ in range(self.exp, self.s):
-            w = w**2
-        # self.w = w
+            w, w_inv = w**2, w_inv**2
 
         self.domain = calculate_domain(w, self.exp, self.k)
-        self.inverse_domain = inverse_domain(self.domain)
+        self.inverse_domain = calculate_domain(w_inv, self.exp, self.k)
+        assert (batch_inverse(self.domain) == self.inverse_domain)
 
     def extend(self, poly: Polynomial):
         assert poly.n() <= self.n
@@ -94,22 +89,35 @@ class Domain:
         coeffs = None
         if isinstance(poly, Polynomial):
             assert len(poly) <= self.n
-            coeffs = pad(poly.coeffs, self.n)
+            coeffs = pad_scalars(poly.coeffs, self.n)
             coeffs = [c * self.inv_n for c in perform_fft(coeffs, self.inverse_domain)]
             return Polynomial(coeffs)
 
         assert isinstance(poly, list)
-        coeffs = pad(poly, self.n)
+        coeffs = pad_scalars(poly, self.n)
         coeffs = [c * self.inv_n for c in perform_fft(coeffs, self.inverse_domain)]
         return Polynomial(coeffs)
 
     def evaluate(self, poly) -> Polynomial:
-        coeffs = pad(poly.coeffs, self.n)
+        coeffs = pad_scalars(poly.coeffs, self.n)
         coeffs = perform_fft(coeffs, self.domain)
         return Polynomial(coeffs)
 
+    def ecc_evaluate(self, points: list[Point]) -> list[Point]:
+        assert len(points) <= self.n
+        points = pad_points(points, self.n)
+        perform_fft(points, self.domain)
+
+    def ecc_interpolate(self, points: list[Point]) -> list[Point]:
+        assert len(points) <= self.n
+        points = pad_points(points, self.n)
+        return [c * self.inv_n for c in perform_fft(points, self.inverse_domain)]
+
     def w(self) -> Scalar:
         return self.domain[1]
+
+    def w_inv(self) -> Scalar:
+        return self.inverse_domain[1]
 
     def omega(self, poly: Polynomial) -> Polynomial:
         return poly.distribute(self.w())
@@ -124,9 +132,9 @@ class Domain:
             if u.is_zero():
                 return Polynomial([zero] * self.n)
 
-        acc = perform_fft(pad(v[0].coeffs, self.n), self.domain)
+        acc = perform_fft(pad_scalars(v[0].coeffs, self.n), self.domain)
         for i in range(1, len(v)):
-            v_i_evals = perform_fft(pad(v[i].coeffs, self.n), self.domain)
+            v_i_evals = perform_fft(pad_scalars(v[i].coeffs, self.n), self.domain)
             acc = [u * v for u, v in zip(acc, v_i_evals)]
 
         coeffs = [c * self.inv_n for c in perform_fft(acc, self.inverse_domain)]
@@ -140,8 +148,8 @@ class Domain:
         assert a.n() <= self.n
         assert b.n() <= self.n
 
-        a_evals = perform_fft(pad(a.coeffs, self.n), self.domain)
-        b_evals = perform_fft(pad(b.coeffs, self.n), self.domain)
+        a_evals = perform_fft(pad_scalars(a.coeffs, self.n), self.domain)
+        b_evals = perform_fft(pad_scalars(b.coeffs, self.n), self.domain)
         b_evals = [1 / u for u in b_evals]
 
         mul_evals = [u * v for u, v in zip(a_evals, b_evals)]

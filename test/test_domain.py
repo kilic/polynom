@@ -1,12 +1,12 @@
 from polynom.ecc import Scalar, one
-from polynom.polynomial import Polynomial, evaluate, lagrange_interpolation
-from polynom.domain.domain import Domain
-from polynom.ecc.bn254.domain import domain_config, kx
+from polynom.polynomial import Polynomial, lagrange_interpolation
+from polynom.ecc.bn254.domain import new_domain, kx
+
 
 
 def test_interpolation():
     for i in range(1, 5):
-        domain = Domain(domain_config(i))
+        domain = new_domain(i)
 
         A0 = Polynomial.rand(domain.n)
         A_x = domain.interpolate(A0)
@@ -20,7 +20,7 @@ def test_interpolation():
 
 def test_omega():
     for i in range(1, 5):
-        domain = Domain(domain_config(i))
+        domain = new_domain(i)
 
         A = Polynomial.rand(domain.n)
         A_x = domain.interpolate(A)
@@ -31,7 +31,7 @@ def test_omega():
 
 
 def test_mul():
-    domain = Domain(domain_config(3))
+    domain = new_domain(3)
 
     n = domain.n
     A = Polynomial.rand(n >> 1)
@@ -50,7 +50,7 @@ def test_mul():
     assert domain.mul(A, B) == domain.mul(B, A)
     assert domain.mul(A, B, C) == domain.mul(C, A, B)
 
-    domain = Domain(domain_config(2))
+    domain = new_domain(2)
     A = Polynomial.from_ints([1, 2, 3, 4])
     B = Polynomial.from_ints([2, 4, 6, 8])
     A_x = domain.interpolate(A)
@@ -63,8 +63,8 @@ def test_mul():
 
 def test_domain():
     n = 2
-    small_domain = Domain(domain_config(n))
-    large_domain = Domain(domain_config(n + 2))
+    small_domain = new_domain(n)
+    large_domain = new_domain(n + 2)
 
     a = Polynomial.rand(1 << n)
     b = Polynomial.rand(1 << n)
@@ -119,7 +119,7 @@ def test_domain():
 
 def test_lagrage_polynomial():
     n = 6
-    domain = Domain(domain_config(n))
+    domain = new_domain(n)
     zeta = Scalar.rand()
     for i in range(domain.n):
         li_x = domain.lagrange_polynomial(i)

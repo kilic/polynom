@@ -16,7 +16,7 @@ def perform_fft(A: list[Scalar], domain: list[Scalar]) -> list[Scalar]:
             mm = m >> 1
             for j in range(mm):
                 w = domain[j * d]
-                t = w * A[k + j + mm]
+                t = A[k + j + mm] * w
                 u = A[k + j]
                 A[k + j] = u + t
                 A[k + j + mm] = u - t

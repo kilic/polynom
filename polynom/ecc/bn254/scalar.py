@@ -1,4 +1,6 @@
+from __future__ import annotations
 from py_ecc.fields.field_elements import FQ
+from py_ecc.utils import prime_field_inv
 import random
 
 MODULUS = (21888242871839275222246405745257275088548364400416034343698204186575808495617)
@@ -37,7 +39,11 @@ class Scalar(FQ):
         assert len(input) >= 32
         return Scalar(int.from_bytes(input[:32], "little"))
 
-    def to_bytez(self) -> bytes:
+    def inverse(self) -> Scalar:
+        n = prime_field_inv(self.n, self.field_modulus)
+        return Scalar(n)
+
+    def to_bytes(self) -> bytes:
         return self.n.to_bytes(32, "little")
 
     def __repr__(self) -> str:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Tuple
 from polynom.ecc import Scalar, zero, one
-from polynom.utils import trim_zeros, pad
+from polynom.utils import pad_scalars, trim_zeros
 
 
 def evaluate(point: Scalar, *inputs: Polynomial) -> list[Scalar]:
@@ -89,7 +89,7 @@ class Polynomial:
         return Polynomial(self.coeffs[:])
 
     def pad(self, n):
-        coeffs = pad(self.coeffs, n)
+        coeffs = pad_scalars(self.coeffs, n)
         return Polynomial(coeffs)
 
     def eq(self, other) -> bool:

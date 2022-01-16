@@ -1,4 +1,4 @@
-from polynom.ecc import Scalar, zero
+from polynom.ecc import Point, Scalar, zero, one
 
 
 def log2(n: int) -> int:
@@ -18,7 +18,11 @@ def trim_zeros(coeffs: list[Scalar]) -> list[Scalar]:
     return coeffs[:z]
 
 
-def pad(u: list[Scalar], n: int, el=zero) -> list[Scalar]:
+def pad_scalars(u: list[Scalar], n: int, el=zero) -> list[Scalar]:
+    return u[:] + (n - len(u)) * [el]
+
+
+def pad_points(u: list[Point], n: int, el=Point.ZERO()) -> list[Point]:
     return u[:] + (n - len(u)) * [el]
 
 
@@ -40,3 +44,11 @@ def bit_reverse(A: list[Scalar], n: int):
 
 def i_to_fr(*v: int) -> list[Scalar]:
     return [e if isinstance(e, Scalar) else Scalar(e) for e in v]
+
+
+def batch_inverse(domain: list[Scalar]) -> list[Scalar]:
+    # TODO: apperently suboptimal
+    inverse_domain = []
+    for w in domain:
+        inverse_domain.append(one / w)
+    return inverse_domain

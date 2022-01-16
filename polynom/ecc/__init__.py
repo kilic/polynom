@@ -134,4 +134,5 @@ class Point():
         return self.curve.eq(self.point, other.point)
 
     def __repr__(self) -> str:
-        return str(self.normalize())
+        x, y = self.normalize()
+        return str((hex(x.n), hex(y.n)))

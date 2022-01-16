@@ -1,24 +1,39 @@
-from polynom.commitment import gwc
 from polynom.commitment.bdfg.prover import BatchBDFGProverKey, MultiBDFGProverKey
 from polynom.commitment.gwc import GWCKey
 from polynom.commitment.kzg_setup import KZGSetup
 from polynom.polynomial import Polynomial
 from polynom.ecc import Scalar
-from polynom.domain import Domain
-from polynom.ecc.bn254.domain import domain_config
+from polynom.ecc.bn254.domain import new_domain
 from . import hasher
 
 
 def kzg_setup(n: int) -> KZGSetup:
-    domain = Domain(domain_config(n))
+
+    domain = new_domain(n)
     return KZGSetup.new(domain, hasher())
+
+
+def test_kzg_commitment():
+
+    n = 4
+
+    KZG = kzg_setup(n)
+    domain = KZG.domain
+
+    prover = KZG.prover_kzg()
+
+    p = Polynomial.rand(1 << n)
+    p_x = domain.interpolate(p)
+    P_0 = prover.commit(p_x)
+    P_1 = prover.commit_lagrange(p)
+
+    assert P_0 == P_1
 
 
 def test_kzg_single():
 
     n = 3
     KZG = kzg_setup(n)
-
     prover = KZG.prover_kzg()
     p_x = Polynomial.rand(1 << n)
     proof = prover.create_proof(p_x)
