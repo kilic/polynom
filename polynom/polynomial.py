@@ -29,6 +29,35 @@ def lagrange_interpolation(xy: list[Tuple(Scalar, Scalar)]) -> Polynomial:
     return L_x
 
 
+def barycentric_preprocess(points: list[Scalar]) -> list[tuple[Scalar, Scalar]]:
+
+    weights = []
+    size = len(points)
+    for i in range(size):
+        acc = one
+        x_i = points[i]
+        for j in range(size):
+            if i == j:
+                continue
+            x_j = points[j]
+            dif = (x_i - x_j)
+            # expect distinct points
+            assert dif != zero
+            acc = acc * dif
+        # one can apply batch inversion to make it more effective
+        weights.append((x_i, one / acc))
+    return weights
+
+
+def barycentric_evaluation(weights: list[tuple[Scalar, Scalar]], evaluations: list[Scalar], z: Scalar):
+    size = len(evaluations)
+    assert len(weights) == size
+    # one can apply batch inversion to make it more effective
+    denom_coeffs = [weights[i][1] * (one / (z - weights[i][0])) for i in range(size)]
+    num_coeffs = [coeff * e for coeff, e in zip(denom_coeffs, evaluations)]
+    return sum(num_coeffs) / sum(denom_coeffs)
+
+
 class Polynomial:
 
     @staticmethod

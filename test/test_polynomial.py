@@ -1,4 +1,4 @@
-from polynom.polynomial import evaluate, Polynomial, lagrange_interpolation
+from polynom.polynomial import barycentric_evaluation, barycentric_preprocess, evaluate, Polynomial, lagrange_interpolation
 from polynom.ecc import Scalar
 
 
@@ -54,10 +54,29 @@ def test_lagrange_interpolation():
 
     n = 10
     points = []
-    for i in range(n):
+    for _ in range(n):
         points.append((Scalar.rand(), Scalar.rand()))
 
-    L_x = lagrange_interpolation(points)
+    f_x = lagrange_interpolation(points)
 
     for i in range(n):
-        assert (L_x(points[i][0]) == points[i][1])
+        assert (f_x(points[i][0]) == points[i][1])
+
+
+def test_barycentric_formula():
+    n = 10
+    data = []
+    for _ in range(n):
+        data.append((Scalar.rand(), Scalar.rand()))
+
+    f_x = lagrange_interpolation(data)
+
+    points = [point for point, _ in data]
+    evaluations = [e for _, e in data]
+    weights = barycentric_preprocess(points)
+    z = Scalar.rand()
+    eval_0 = barycentric_evaluation(weights, evaluations, z)
+
+    eval_1 = f_x(z)
+
+    assert eval_0 == eval_1
